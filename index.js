@@ -47,10 +47,10 @@ async function run() {
             services.forEach(service => {
                 const serviceBookings = bookings.filter(b => b.treatmentName == service.name)
                 const booked = serviceBookings.map(s => s.slot)
-                const available = service.slots.filter(s=>!booked.includes(s))
+                const available = service.slots.filter(s => !booked.includes(s))
                 // service.booked = serviceBookings.map(s => s.slot)
                 service.slots = available;
-            }) 
+            })
             res.send(services)
         })
         /**
@@ -62,6 +62,13 @@ async function run() {
          * app.delete('/booking/:id')
          */
 
+        app.get('/booking', async (req, res) => {
+            const patientEmail = req.query.email;
+            const query = {email: patientEmail}
+            // console.log(query);
+            const booking = await bookingCollection.find(query).toArray()
+            res.send(booking)
+        })
         app.post('/booking', async (req, res) => {
             const booking = req.body;
             const query = { treatmentName: booking.treatmentName, date: booking.date, name: booking.name }

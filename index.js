@@ -19,6 +19,7 @@ async function run() {
     try {
         await client.connect();
         const servicesCollection = client.db("doctors_portal").collection("services");
+        const bookingCollection = client.db("doctors_portal").collection("booking");
 
 
         app.get('/services', async (req, res) => {
@@ -26,6 +27,50 @@ async function run() {
             const cursor = servicesCollection.find(query);
             const services = await cursor.toArray()
             res.send(services)
+        })
+
+
+
+        //warning 
+        // this is not proper way query
+        app.get('/available', async (req, res) => {
+            const date = req.query.date
+            // console.log(date)
+            // step:1 get all services
+            const services = await servicesCollection.find().toArray();
+            //Step 2: get the booking of that day
+            const query = { date: date }
+            const bookings = await bookingCollection.find(query).toArray()
+
+
+            //Step 3: for each service, find booking for that service
+            services.forEach(service => {
+                const serviceBookings = bookings.filter(b => b.treatmentName == service.name)
+                const booked = serviceBookings.map(s => s.slot)
+                const available = service.slots.filter(s=>!booked.includes(s))
+                // service.booked = serviceBookings.map(s => s.slot)
+                service.slots = available;
+            }) 
+            res.send(services)
+        })
+        /**
+         * API naming convention
+         * app.get('/booking') // get all booking in this collection or get more then specific condition
+         * app.get('/booking/:id') get specific booking
+         * app.post('/booking') // add a new booking
+         * app.patch('/booking/:id')
+         * app.delete('/booking/:id')
+         */
+
+        app.post('/booking', async (req, res) => {
+            const booking = req.body;
+            const query = { treatmentName: booking.treatmentName, date: booking.date, name: booking.name }
+            const exists = await bookingCollection.findOne(query);
+            if (exists) {
+                return res.send({ success: false, booking: exists })
+            }
+            const result = await bookingCollection.insertOne(booking)
+            return res.send({ success: true, result })
         })
 
     }
